@@ -1,0 +1,19 @@
+{
+  "name": "260624_semantics-ui-test",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "serve": "serve docs -l 5181",
+    "start": "npm run build && npm run serve",
+    "dev": "npm run start",
+    "e2eTest_ui": "playwright test --ui",
+    "e2eTest": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "serve": "^14.2.4",
+    "typescript": "~5.9.3"
+  }
+}
