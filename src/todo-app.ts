@@ -98,14 +98,14 @@ function renderApp(state: TodoState, classNames: TodoAppClassNames) {
 function bindEvents(
   root: HTMLElement,
   store: ReturnType<typeof createTodoStore>,
-  dialog: HTMLDialogElement,
-) {
+  getDialog: () => HTMLDialogElement,
+): () => void {
   const openDialog = (pending: PendingDelete) => {
     store.requestDelete(pending.section, pending.index);
-    dialog.showModal();
+    getDialog().showModal();
   };
 
-  root.querySelector('#add-form')?.addEventListener('submit', (event) => {
+  const onSubmit = (event: Event) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
     const input = form.querySelector<HTMLInputElement>('#todo-input');
@@ -113,17 +113,17 @@ function bindEvents(
     store.addTodo(input.value);
     input.value = '';
     input.focus();
-  });
+  };
 
-  root.addEventListener('change', (event) => {
+  const onChange = (event: Event) => {
     const target = event.target as HTMLInputElement;
     if (target.dataset.action !== 'toggle') return;
     const section = target.dataset.section as TodoSection;
     const index = Number(target.dataset.index);
     store.toggleComplete(section, index, target.checked);
-  });
+  };
 
-  root.addEventListener('click', (event) => {
+  const onClick = (event: Event) => {
     const target = event.target as HTMLElement;
     const button = target.closest<HTMLButtonElement>('[data-action]');
     if (!button) return;
@@ -137,27 +137,42 @@ function bindEvents(
     }
     if (action === 'confirm-delete') {
       store.confirmDelete();
-      dialog.close();
+      getDialog().close();
       return;
     }
     if (action === 'cancel-delete') {
       store.cancelDelete();
-      dialog.close();
+      getDialog().close();
     }
-  });
+  };
+
+  const form = root.querySelector('#add-form');
+  form?.addEventListener('submit', onSubmit);
+  root.addEventListener('change', onChange);
+  root.addEventListener('click', onClick);
+
+  return () => {
+    form?.removeEventListener('submit', onSubmit);
+    root.removeEventListener('change', onChange);
+    root.removeEventListener('click', onClick);
+  };
 }
 
 export function mountTodoApp(
   container: HTMLElement,
   classNames: TodoAppClassNames = defaultClassNames,
 ) {
-  const store = createTodoStore(initialTodoState, (state) => {
-    container.innerHTML = renderApp(state, classNames);
-    const dialog = container.querySelector<HTMLDialogElement>('#confirm-dialog')!;
-    bindEvents(container, store, dialog);
-  });
+  let cleanup: (() => void) | undefined;
+  let store: ReturnType<typeof createTodoStore>;
 
-  container.innerHTML = renderApp(store.getState(), classNames);
-  const dialog = container.querySelector<HTMLDialogElement>('#confirm-dialog')!;
-  bindEvents(container, store, dialog);
+  const render = (state: TodoState) => {
+    cleanup?.();
+    container.innerHTML = renderApp(state, classNames);
+    cleanup = bindEvents(container, store, () =>
+      container.querySelector<HTMLDialogElement>('#confirm-dialog')!,
+    );
+  };
+
+  store = createTodoStore(initialTodoState, render);
+  render(store.getState());
 }

@@ -70,12 +70,12 @@ function renderApp(state, classNames) {
     </main>
   `;
 }
-function bindEvents(root, store, dialog) {
+function bindEvents(root, store, getDialog) {
     const openDialog = (pending) => {
         store.requestDelete(pending.section, pending.index);
-        dialog.showModal();
+        getDialog().showModal();
     };
-    root.querySelector('#add-form')?.addEventListener('submit', (event) => {
+    const onSubmit = (event) => {
         event.preventDefault();
         const form = event.currentTarget;
         const input = form.querySelector('#todo-input');
@@ -84,16 +84,16 @@ function bindEvents(root, store, dialog) {
         store.addTodo(input.value);
         input.value = '';
         input.focus();
-    });
-    root.addEventListener('change', (event) => {
+    };
+    const onChange = (event) => {
         const target = event.target;
         if (target.dataset.action !== 'toggle')
             return;
         const section = target.dataset.section;
         const index = Number(target.dataset.index);
         store.toggleComplete(section, index, target.checked);
-    });
-    root.addEventListener('click', (event) => {
+    };
+    const onClick = (event) => {
         const target = event.target;
         const button = target.closest('[data-action]');
         if (!button)
@@ -107,22 +107,32 @@ function bindEvents(root, store, dialog) {
         }
         if (action === 'confirm-delete') {
             store.confirmDelete();
-            dialog.close();
+            getDialog().close();
             return;
         }
         if (action === 'cancel-delete') {
             store.cancelDelete();
-            dialog.close();
+            getDialog().close();
         }
-    });
+    };
+    const form = root.querySelector('#add-form');
+    form?.addEventListener('submit', onSubmit);
+    root.addEventListener('change', onChange);
+    root.addEventListener('click', onClick);
+    return () => {
+        form?.removeEventListener('submit', onSubmit);
+        root.removeEventListener('change', onChange);
+        root.removeEventListener('click', onClick);
+    };
 }
 export function mountTodoApp(container, classNames = defaultClassNames) {
-    const store = createTodoStore(initialTodoState, (state) => {
+    let cleanup;
+    let store;
+    const render = (state) => {
+        cleanup?.();
         container.innerHTML = renderApp(state, classNames);
-        const dialog = container.querySelector('#confirm-dialog');
-        bindEvents(container, store, dialog);
-    });
-    container.innerHTML = renderApp(store.getState(), classNames);
-    const dialog = container.querySelector('#confirm-dialog');
-    bindEvents(container, store, dialog);
+        cleanup = bindEvents(container, store, () => container.querySelector('#confirm-dialog'));
+    };
+    store = createTodoStore(initialTodoState, render);
+    render(store.getState());
 }
