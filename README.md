@@ -1,4 +1,4 @@
-# 260624_semantics-ui-test
+ICS MEDIA「[HTMLのセマンティクスを意識して、壊れにくいテストコードを書こう](https://ics.media/entry/260624/)」のサンプルコードです。
 
 | ページ | 内容 |
 | --- | --- |
